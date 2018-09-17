@@ -21,7 +21,6 @@ from __future__ import print_function
 from tensorflow.examples.speech_commands import freeze
 from tensorflow.python.platform import test
 
-
 class FreezeTest(test.TestCase):
 
   def testCreateInferenceGraph(self):

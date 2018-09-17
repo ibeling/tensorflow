@@ -152,14 +152,24 @@ def create_single_fc_model(fingerprint_input, model_settings, is_training):
     dropout_prob = tf.placeholder(tf.float32, name='dropout_prob')
   fingerprint_size = model_settings['fingerprint_size']
   label_count = model_settings['label_count']
+  fc_output_channels = 128
   weights = tf.Variable(
-      tf.truncated_normal([fingerprint_size, label_count], stddev=0.001))
-  bias = tf.Variable(tf.zeros([label_count]))
+      tf.truncated_normal([fingerprint_size, fc_output_channels], stddev=0.001))
+  bias = tf.Variable(tf.zeros([fc_output_channels]))
   logits = tf.matmul(fingerprint_input, weights) + bias
+  relu = tf.nn.relu(logits)
   if is_training:
-    return logits, dropout_prob
+    dropout = tf.nn.dropout(relu, dropout_prob)
   else:
-    return logits
+    dropout = relu
+  weights_2 = tf.Variable(
+      tf.truncated_normal([fc_output_channels, label_count], stddev=0.001))
+  bias_2 = tf.Variable(tf.zeros([label_count]))
+  logits_output = tf.matmul(dropout, weights_2) + bias_2
+  if is_training:
+    return logits_output, dropout_prob
+  else:
+    return logits_output
 
 
 def create_conv_model(fingerprint_input, model_settings, is_training):
@@ -324,9 +334,9 @@ def create_low_latency_conv_model(fingerprint_input, model_settings,
                               [-1, input_time_size, input_frequency_size, 1])
   first_filter_width = 8
   first_filter_height = input_time_size
-  first_filter_count = 186
-  first_filter_stride_x = 1
-  first_filter_stride_y = 1
+  first_filter_count = 20
+  first_filter_stride_x = 2
+  first_filter_stride_y = 2
   first_weights = tf.Variable(
       tf.truncated_normal(
           [first_filter_height, first_filter_width, 1, first_filter_count],
@@ -335,6 +345,7 @@ def create_low_latency_conv_model(fingerprint_input, model_settings,
   first_conv = tf.nn.conv2d(fingerprint_4d, first_weights, [
       1, first_filter_stride_y, first_filter_stride_x, 1
   ], 'VALID') + first_bias
+  print("shape ", first_conv.get_shape())
   first_relu = tf.nn.relu(first_conv)
   if is_training:
     first_dropout = tf.nn.dropout(first_relu, dropout_prob)
